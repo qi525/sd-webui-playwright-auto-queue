@@ -42,10 +42,28 @@ def run(playwright: Playwright) -> None:
     page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name=">> 文生图").click()
 
-    page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000)
-    page.get_by_role("textbox", name="提示词", exact=True).click()
-    page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a")
-    page.get_by_role("textbox", name="提示词", exact=True).fill("")
+    # --- 以下是注释掉的原始提示词清空操作，由新的对话框处理和点击替代 ---
+    # page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000)
+    # page.get_by_role("textbox", name="提示词", exact=True).click()
+    # page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a")
+    # page.get_by_role("textbox", name="提示词", exact=True).fill("")
+    # --- 替代代码开始 ---
+
+    # 监听并处理对话框（例如 alert, confirm, prompt）。
+    # page.once() 确保只监听一次。
+    # Playwright Python 默认是同步的，所以这里不需要 await。
+    # 注意：Playwright 的对话框处理是异步的，但当你使用 sync_api 时，Playwright 会在内部处理异步等待。
+    def handle_dialog(dialog):
+        print(f"Dialog message: {dialog.message}")
+        dialog.dismiss() # dismiss() 相当于 JS 中的 dialog.dismiss() 或 dialog.cancel()
+                         # .catch(() => {}) 在 Python 中不需要，因为 Playwright 会自动处理异常
+    page.once("dialog", handle_dialog)
+
+    # 点击元素，根据你提供的 UUID 选择器。
+    # Playwright 会自动等待元素可见和可操作。
+    page.locator('#uuid-0d3ce5bf-7c2b-4961-ace6-1f8c81dd17fe').first.click()
+
+    # --- 替代代码结束 ---
 
     page.get_by_role("button", name="🎲️").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="🎲️").click()
