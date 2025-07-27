@@ -32,13 +32,6 @@ def run(playwright: Playwright) -> None:
     file_input_locator.set_input_files("00558-913820330.png")
     time.sleep(2) # 设置文件后等待 2 秒
 
-    page.get_by_role("button", name="文生图", exact=True).wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name="文生图", exact=True).click()
-    time.sleep(2) # 点击后等待 2 秒
-
-    page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name="图片信息").click()
-    time.sleep(2) # 点击后等待 2 秒
 
     page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name=">> 文生图").click()
