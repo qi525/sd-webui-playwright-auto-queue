@@ -1,6 +1,6 @@
 # my_test.py
 from playwright.sync_api import Playwright, sync_playwright, expect
-import time # 导入 time 模块
+import time
 
 def run(playwright: Playwright) -> None:
     browser = playwright.chromium.launch(headless=False)
@@ -10,27 +10,42 @@ def run(playwright: Playwright) -> None:
     page.goto("http://localhost:7862/?__theme=dark")
 
     # 显式等待 "图片信息" 按钮可见并点击
+    # 如果页面加载慢，这个等待是必要的
     page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="图片信息").click()
 
-    # 显式等待 "拖拽图像到此处 -或- 点击上传" 文本可见并点击
-    # 原始选择器可能不够精确，我们尝试等待文本出现
-    # 或者直接点击上传区域（如果它是可点击的）
-    # 这里我们等待文本出现，并确保其父元素可点击
-    upload_area_locator = page.locator("#pnginfo_image").get_by_text("拖拽图像到此处 -或- 点击上传")
-    upload_area_locator.wait_for(state="visible", timeout=10000)
-    upload_area_locator.click()
+    # --- 优化文件上传部分 ---
+    # 查找页面上的文件输入元素。通常是一个 input 标签，类型为 file。
+    # 我们可以尝试使用更通用的选择器来找到它，例如 'input[type="file"]'。
+    # 如果页面上有多个这样的元素，可能需要更具体的选择器。
+    # 这里我们假设它是 #pnginfo_image 区域内的某个 input[type="file"]
+    # 也可以直接尝试更通用的 page.locator('input[type="file"]')
+    
+    # 方案一：尝试在 #pnginfo_image 区域内查找 input[type="file"]
+    file_input_locator = page.locator("#pnginfo_image input[type='file']")
+    
+    # 方案二（如果方案一不行，可以尝试这个更通用的）：
+    # file_input_locator = page.locator('input[type="file"]')
 
-    # 确保文件输入框可见并设置文件
-    # 对于 set_input_files，Playwright 通常会自动等待文件输入框出现
-    # 但如果之前点击操作没有成功激活文件输入，这里可能会有问题
-    page.locator("body").set_input_files("00558-913820330.png")
+    # 显式等待文件输入元素出现。
+    # Playwright 的 set_input_files 会自动等待元素，但这里增加显式等待可以避免后续操作失败。
+    file_input_locator.wait_for(state="attached", timeout=10000) # 只要元素在DOM中即可，不要求可见
+
+    # 直接设置文件，这会模拟用户选择文件。
+    # 注意：确保 '00558-913820330.png' 文件存在于脚本运行的目录下，或者使用绝对路径。
+    file_input_locator.set_input_files("00558-913820330.png")
+
+    # 在文件上传后，可能需要等待一些时间让页面处理上传操作，例如图片预览显示出来。
+    # 这里可以根据实际情况添加一个短暂的暂停，或者等待图片预览元素可见。
+    # 比如等待一个代表图片加载完成的元素出现
+    # time.sleep(2) # 临时等待2秒，观察效果
+
+    # --- 文件上传优化结束 ---
 
     # 显式等待 "文生图" 按钮可见并点击
     page.get_by_role("button", name="文生图", exact=True).wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="文生图", exact=True).click()
 
-    # 以下操作可能也需要类似的等待，根据实际情况添加
     page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="图片信息").click()
 
