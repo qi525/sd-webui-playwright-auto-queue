@@ -44,22 +44,15 @@ def run(playwright: Playwright) -> None:
     page.get_by_role("button", name=">> 文生图").click()
     time.sleep(2) # 点击后等待 2 秒
 
-    # --- 以下是注释掉的原始提示词清空操作，由新的对话框处理和点击替代 ---
-    # page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000)
-    # page.get_by_role("textbox", name="提示词", exact=True).click()
-    # page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a")
-    # page.get_by_role("textbox", name="提示词", exact=True).fill("")
-    # --- 替代代码开始 ---
-
-    def handle_dialog(dialog):
-        print(f"Dialog message: {dialog.message}")
-        dialog.dismiss()
-    page.once("dialog", handle_dialog)
-
-    page.locator('#uuid-0d3ce5bf-7c2b-4961-ace6-1f8c81dd17fe').first.click()
+    # --- 恢复原始提示词清空操作 ---
+    page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000)
+    page.get_by_role("textbox", name="提示词", exact=True).click()
     time.sleep(2) # 点击后等待 2 秒
-
-    # --- 替代代码结束 ---
+    page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a")
+    time.sleep(2) # 选中后等待 2 秒
+    page.get_by_role("textbox", name="提示词", exact=True).fill("")
+    time.sleep(2) # 填充（清空）后等待 2 秒
+    # --- 原始提示词清空操作恢复结束 ---
 
     page.get_by_role("button", name="🎲️").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="🎲️").click()
