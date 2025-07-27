@@ -22,7 +22,7 @@ def split_txt_file_by_lines(file_path: str) -> list[str]:
 
     # 1. 检查文件是否存在，不存在则创建
     if not os.path.exists(file_path):
-        logger.warning(f"文件 '{file_path}' 不存在，已创建空文件。")
+        logger.info(f"文件 '{file_path}' 不存在，已创建空文件作为初始化。")
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 pass  # 创建一个空文件
@@ -42,11 +42,12 @@ def split_txt_file_by_lines(file_path: str) -> list[str]:
         logger.error(f"读取文件 '{file_path}' 统计行数失败: {e}")
         return []
 
+    # 3. 处理空文件情况
     if total_lines == 0:
-        logger.warning(f"文件 '{file_path}' 为空，无需拆分。")
+        logger.info(f"文件 '{file_path}' 为空。由于没有内容可供拆分，Playwright 自动化将跳过运行。请填充文件后再次运行以进行处理。")
         return []
 
-    # 3. 默认按照一次输入一百行进行拆分，并等待用户确认
+    # 4. 默认按照一次输入一百行进行拆分，并等待用户确认
     lines_per_output_file = 100
     num_parts = (total_lines + lines_per_output_file - 1) // lines_per_output_file # 向上取整计算份数
 
@@ -71,7 +72,7 @@ def split_txt_file_by_lines(file_path: str) -> list[str]:
     failed_files = 0
     generated_file_paths = []
 
-    # 4. 按行写入到拆分文件
+    # 5. 按行写入到拆分文件
     try:
         with open(file_path, 'r', encoding='utf-8') as infile:
             current_part_num = 1
@@ -176,7 +177,6 @@ def run_playwright_automation(playwright: Playwright, input_file_paths: list[str
     file_input_locator.set_input_files("00558-913820330.png")
     time.sleep(2) # 设置文件后等待 2 秒
 
-
     page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name=">> 文生图").click()
     time.sleep(2) # 点击后等待 2 秒
@@ -270,7 +270,7 @@ if __name__ == "__main__":
         with sync_playwright() as playwright:
             run_playwright_automation(playwright, split_file_paths)
     else:
-        logger.warning("没有生成拆分文件，跳过 Playwright 自动化。")
+        logger.info("由于没有文件可供处理，跳过 Playwright 自动化。") # 更改为info级别，更友好
 
     # 任务完成后自动打开日志文件
     try:
