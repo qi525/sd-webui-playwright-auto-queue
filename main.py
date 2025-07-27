@@ -35,36 +35,47 @@ def split_txt_file_by_lines(file_path: Path) -> list[Path]:
             logger.error(f"创建文件 '{file_path}' 失败: {e}")
             return []
 
-    # 2. 读取文件并统计总行数
+    # 2. 读取文件并统计总行数 (第一次读取)
     total_lines = 0
     try:
         with open(str(file_path), 'r', encoding='utf-8') as f: # 将 Path 对象转换为字符串以便 open() 函数使用
             for _ in f:
                 total_lines += 1
-        logger.info(f"文件 '{file_path}' 总行数：{total_lines}")
+        logger.info(f"文件 '{file_path}' 总行数：{total_lines} (初次读取)")
     except Exception as e:
         logger.error(f"读取文件 '{file_path}' 统计行数失败: {e}")
         return []
 
-    # 3. 处理空文件情况
-    if total_lines == 0:
-        logger.info(f"文件 '{file_path}' 为空。由于没有内容可供拆分，Playwright 自动化将跳过运行。请填充文件后再次运行以进行处理。")
-        return []
-
-    # 4. 默认按照一次输入一百行进行拆分，并等待用户确认
-    lines_per_output_file = 100
-    num_parts = (total_lines + lines_per_output_file - 1) // lines_per_output_file # 向上取整计算份数
-
-    logger.info(f"文件 '{file_path}' 共有 {total_lines} 行。将按每份 {lines_per_output_file} 行进行拆分。")
-    logger.info(f"计划拆分为 {num_parts} 份。")
-    if total_lines % lines_per_output_file != 0:
-        logger.info(f"其中，最后一份将包含 {total_lines % lines_per_output_file} 行。")
-
-    # 自动打开文件供用户检查，并等待用户确认
+    # 自动打开文件供用户检查，并等待用户确认（即使文件为空，也先打开让用户填写）
     logger.info(f"即将自动打开文件 '{file_path}' 供您检查。")
     # 使用 my_tools 中的函数打开文件
     open_output_files_automatically([file_path], logger)
-    input("请检查文件内容，确认无误后按 Enter 键继续文件处理...") # 等待用户输入
+    input("请检查文件内容，填写完成后，保存文件并按 Enter 键继续文件处理...") # 等待用户输入
+
+    # 在用户确认后，重新读取文件以获取最新的行数
+    new_total_lines = 0
+    try:
+        with open(str(file_path), 'r', encoding='utf-8') as f:
+            for _ in f:
+                new_total_lines += 1
+        logger.info(f"文件 '{file_path}' 总行数：{new_total_lines} (用户填写后重新读取)")
+    except Exception as e:
+        logger.error(f"重新读取文件 '{file_path}' 统计行数失败: {e}")
+        return []
+
+    # 3. 处理空文件情况 (重新读取后再次判断)
+    if new_total_lines == 0:
+        logger.info(f"文件 '{file_path}' 仍为空。由于没有内容可供拆分，Playwright 自动化将跳过运行。")
+        return []
+
+    # 4. 默认按照一次输入一百行进行拆分
+    lines_per_output_file = 100
+    num_parts = (new_total_lines + lines_per_output_file - 1) // lines_per_output_file # 向上取整计算份数
+
+    logger.info(f"文件 '{file_path}' 共有 {new_total_lines} 行。将按每份 {lines_per_output_file} 行进行拆分。")
+    logger.info(f"计划拆分为 {num_parts} 份。")
+    if new_total_lines % lines_per_output_file != 0:
+        logger.info(f"其中，最后一份将包含 {new_total_lines % lines_per_output_file} 行。")
 
     # 初始化计数器和已生成文件路径列表
     processed_lines = 0
@@ -85,8 +96,8 @@ def split_txt_file_by_lines(file_path: Path) -> list[Path]:
                 if current_part_num < num_parts:
                     target_lines_for_this_part = lines_per_output_file
                 else: # 这是最后一部分
-                    target_lines_for_this_part = total_lines % lines_per_output_file
-                    if target_lines_for_this_part == 0 and total_lines > 0: # 如果 total_lines 是 100 的倍数，则最后一部分也是 100 行
+                    target_lines_for_this_part = new_total_lines % lines_per_output_file
+                    if target_lines_for_this_part == 0 and new_total_lines > 0: # 如果 new_total_lines 是 100 的倍数，则最后一部分也是 100 行
                         target_lines_for_this_part = lines_per_output_file
 
                 # 如果没有输出文件打开，或者当前文件已达到行数限制，则创建新的输出文件
@@ -141,7 +152,7 @@ def split_txt_file_by_lines(file_path: Path) -> list[Path]:
         logger.critical(f"【异常警报】文件拆分失败！")
     finally:
         logger.info(f"--- 文件拆分任务总结 ---")
-        logger.info(f"总行数：{total_lines}")
+        logger.info(f"总行数：{new_total_lines}")
         logger.info(f"已处理行数：{processed_lines}")
         logger.info(f"成功拆分文件数：{success_files}")
         logger.info(f"失败拆分文件数：{failed_files}")
