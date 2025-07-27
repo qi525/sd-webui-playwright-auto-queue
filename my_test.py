@@ -3,46 +3,36 @@ from playwright.sync_api import Playwright, sync_playwright, expect
 import time
 
 def run(playwright: Playwright) -> None:
-    browser = playwright.chromium.launch(headless=False)
-    context = browser.new_context()
+    # 设置浏览器启动参数
+    browser = playwright.chromium.launch(
+        headless=False,
+        args=[
+            "--start-maximized" # 尝试最大化窗口，有时比设置固定分辨率更灵活
+        ]
+    )
+    context = browser.new_context(
+        no_viewport=True, # 忽略默认视口大小，使用浏览器窗口大小
+        # 或者如果你想要固定2K分辨率，可以使用以下配置，但注意这可能不会立即生效为全屏
+        # viewport={'width': 2560, 'height': 1440}
+    )
     page = context.new_page()
+
+    # 如果没有使用 --start-maximized，并且需要固定分辨率，可以在这里设置
+    # page.set_viewport_size({'width': 2560, 'height': 1440}) # 2K分辨率
 
     page.goto("http://localhost:7862/?__theme=dark")
 
-    # 显式等待 "图片信息" 按钮可见并点击
-    # 如果页面加载慢，这个等待是必要的
     page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="图片信息").click()
 
-    # --- 优化文件上传部分 ---
-    # 查找页面上的文件输入元素。通常是一个 input 标签，类型为 file。
-    # 我们可以尝试使用更通用的选择器来找到它，例如 'input[type="file"]'。
-    # 如果页面上有多个这样的元素，可能需要更具体的选择器。
-    # 这里我们假设它是 #pnginfo_image 区域内的某个 input[type="file"]
-    # 也可以直接尝试更通用的 page.locator('input[type="file"]')
-    
-    # 方案一：尝试在 #pnginfo_image 区域内查找 input[type="file"]
     file_input_locator = page.locator("#pnginfo_image input[type='file']")
-    
-    # 方案二（如果方案一不行，可以尝试这个更通用的）：
-    # file_input_locator = page.locator('input[type="file"]')
-
-    # 显式等待文件输入元素出现。
-    # Playwright 的 set_input_files 会自动等待元素，但这里增加显式等待可以避免后续操作失败。
-    file_input_locator.wait_for(state="attached", timeout=10000) # 只要元素在DOM中即可，不要求可见
-
-    # 直接设置文件，这会模拟用户选择文件。
-    # 注意：确保 '00558-913820330.png' 文件存在于脚本运行的目录下，或者使用绝对路径。
+    file_input_locator.wait_for(state="attached", timeout=10000)
     file_input_locator.set_input_files("00558-913820330.png")
 
-    # 在文件上传后，可能需要等待一些时间让页面处理上传操作，例如图片预览显示出来。
-    # 这里可以根据实际情况添加一个短暂的暂停，或者等待图片预览元素可见。
-    # 比如等待一个代表图片加载完成的元素出现
-    # time.sleep(2) # 临时等待2秒，观察效果
+    # 在文件上传后，等待页面处理完成，例如等待某个加载指示器消失或关键元素出现
+    # 这里可以根据你的页面实际情况进行调整，例如等待图片预览加载完成
+    # time.sleep(2) # 临时等待2秒，观察效果，如果页面有特定元素表示加载完成，最好等待该元素
 
-    # --- 文件上传优化结束 ---
-
-    # 显式等待 "文生图" 按钮可见并点击
     page.get_by_role("button", name="文生图", exact=True).wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="文生图", exact=True).click()
 
@@ -72,6 +62,10 @@ def run(playwright: Playwright) -> None:
 
     page.get_by_role("button", name="Enqueue").wait_for(state="visible", timeout=10000)
     page.get_by_role("button", name="Enqueue").click()
+
+    # --- 增加等待时间 ---
+    print("等待 10 秒后关闭浏览器...")
+    time.sleep(10) # 暂停 10 秒
 
     context.close()
     browser.close()
