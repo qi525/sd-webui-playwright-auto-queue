@@ -63,6 +63,8 @@ def run(playwright: Playwright) -> None:
     page.get_by_role("textbox", name="提示词输入列表").click()
     time.sleep(2) # 点击后等待 2 秒
 
+
+    # 填充提示词，待会需要换成别的代码核心段
     page.get_by_role("textbox", name="提示词输入列表").fill('1girl, absurdres, ahoge, ass_visible_through_thighs, bikini, black_hair, blue_archive, blush, breasts, breasts_apart, closed_mouth, collarbone, dark-skinned_female, dark_skin, halo, highres, jason_kim, karin_\\(blue_archive\\), large_breasts, long_hair, looking_at_viewer, navel, purple_halo, shirt, slingshot_swimsuit, solo, stomach, straight_hair, string_bikini, sweatdrop, swimsuit, very_long_hair, white_bikini, white_shirt, looking_at_viewer, curvy,seductive_smile,glamor,makeup,blush,,')
     time.sleep(2) # 填充后等待 2 秒
 
