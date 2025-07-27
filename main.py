@@ -2,10 +2,9 @@
 import os
 import datetime
 from loguru import logger
-import time
-from playwright.sync_api import Playwright, sync_playwright, expect
+import asyncio # 导入 asyncio
+from playwright.async_api import Playwright, async_playwright, expect # 更改: 从 sync_api 变为 async_api
 from pathlib import Path
-import asyncio
 from my_tools import setup_logger, open_output_files_automatically, open_completed_logs
 
 # --- 文件拆分功能 ---
@@ -160,7 +159,7 @@ def split_txt_file_by_lines(file_path: Path) -> list[Path]:
         return generated_file_paths
 
 # --- Playwright 自动化功能 ---
-def run_playwright_automation(playwright: Playwright, input_file_paths: list[Path]) -> None:
+async def run_playwright_automation(playwright: Playwright, input_file_paths: list[Path]) -> None: # 更改: 变为异步函数
     """
     运行 Playwright 自动化脚本，将拆分后的文件内容依次填充到网页输入框。
 
@@ -169,53 +168,53 @@ def run_playwright_automation(playwright: Playwright, input_file_paths: list[Pat
         input_file_paths (list[Path]): 包含要填充到网页的文本文件路径列表。
     """
     logger.info("开始运行 Playwright 自动化任务。")
-    browser = playwright.chromium.launch(
+    browser = await playwright.chromium.launch( # 更改: 添加 await
         headless=False,
         args=["--start-maximized"]
     )
-    context = browser.new_context(no_viewport=True)
-    page = context.new_page()
+    context = await browser.new_context(no_viewport=True) # 更改: 添加 await
+    page = await context.new_page() # 更改: 添加 await
 
-    page.goto("http://localhost:7862/?__theme=dark")
-    time.sleep(2) # 页面加载后等待 2 秒
+    await page.goto("http://localhost:7862/?__theme=dark") # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
-    page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name="图片信息").click()
-    time.sleep(2) # 点击后等待 2 秒
+    await page.get_by_role("button", name="图片信息").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("button", name="图片信息").click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
     file_input_locator = page.locator("#pnginfo_image input[type='file']")
-    file_input_locator.wait_for(state="attached", timeout=10000)
-    file_input_locator.set_input_files("00558-913820330.png")
-    time.sleep(2) # 设置文件后等待 2 秒
+    await file_input_locator.wait_for(state="attached", timeout=10000) # 更改: 添加 await
+    await file_input_locator.set_input_files("00558-913820330.png") # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
-    page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name=">> 文生图").click()
-    time.sleep(2) # 点击后等待 2 秒
+    await page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("button", name=">> 文生图").click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
     # --- 提示词清空操作（只执行一次） ---
-    page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000)
-    page.get_by_role("textbox", name="提示词", exact=True).click()
-    time.sleep(2) # 点击后等待 2 秒
-    page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a")
-    time.sleep(2) # 选择后等待 2 秒
-    page.get_by_role("textbox", name="提示词", exact=True).fill("")
-    time.sleep(2) # 填充（清空）后等待 2 秒
+    await page.get_by_role("textbox", name="提示词", exact=True).wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("textbox", name="提示词", exact=True).click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
+    await page.get_by_role("textbox", name="提示词", exact=True).press("ControlOrMeta+a") # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
+    await page.get_by_role("textbox", name="提示词", exact=True).fill("") # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
     # --- 提示词清空操作结束 ---
 
     # --- 骰子按钮（只执行一次） ---
-    page.get_by_role("button", name="🎲️").wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name="🎲️").click()
-    time.sleep(2) # 点击后等待 2 秒
+    await page.get_by_role("button", name="🎲️").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("button", name="🎲️").click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
     # --- 骰子按钮操作结束 ---
 
     # Playwright 自动点击“脚本”输入框
-    page.get_by_role("textbox", name="脚本").wait_for(state="visible", timeout=10000)
-    page.get_by_role("textbox", name="脚本").click()
-    time.sleep(2) # 点击后等待 2 秒
+    await page.get_by_role("textbox", name="脚本").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("textbox", name="脚本").click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
-    page.get_by_role("button", name="Prompts from file or textbox").wait_for(state="visible", timeout=10000)
-    page.get_by_role("button", name="Prompts from file or textbox").click()
-    time.sleep(2) # 点击后等待 2 秒
+    await page.get_by_role("button", name="Prompts from file or textbox").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+    await page.get_by_role("button", name="Prompts from file or textbox").click() # 更改: 添加 await
+    await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
     # 循环读取拆分文件内容并填充到“提示词输入列表”
     for i, file_path_for_input in enumerate(input_file_paths):
@@ -228,33 +227,33 @@ def run_playwright_automation(playwright: Playwright, input_file_paths: list[Pat
             continue # 跳过当前文件，继续下一个
 
         # 提示词输入列表的操作：清空并填充新内容
-        page.get_by_role("textbox", name="提示词输入列表").wait_for(state="visible", timeout=10000)
-        page.get_by_role("textbox", name="提示词输入列表").click()
-        time.sleep(2) # 点击后等待 2 秒
-        page.get_by_role("textbox", name="提示词输入列表").press("ControlOrMeta+a")
-        time.sleep(2) # 选择后等待 2 秒
-        page.get_by_role("textbox", name="提示词输入列表").fill("") # 清空
-        time.sleep(2) # 清空后等待 2 秒
+        await page.get_by_role("textbox", name="提示词输入列表").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+        await page.get_by_role("textbox", name="提示词输入列表").click() # 更改: 添加 await
+        await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
+        await page.get_by_role("textbox", name="提示词输入列表").press("ControlOrMeta+a") # 更改: 添加 await
+        await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
+        await page.get_by_role("textbox", name="提示词输入列表").fill("") # 更改: 添加 await
+        await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
-        page.get_by_role("textbox", name="提示词输入列表").fill(content_to_fill) # 填充新内容
-        time.sleep(2) # 填充后等待 2 秒
+        await page.get_by_role("textbox", name="提示词输入列表").fill(content_to_fill) # 更改: 添加 await
+        await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
-        page.get_by_role("button", name="Enqueue").wait_for(state="visible", timeout=10000)
-        page.get_by_role("button", name="Enqueue").click()
-        time.sleep(2) # 点击后等待 2 秒
+        await page.get_by_role("button", name="Enqueue").wait_for(state="visible", timeout=10000) # 更改: 添加 await
+        await page.get_by_role("button", name="Enqueue").click() # 更改: 添加 await
+        await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
         # 每次加入队列后，等待一段时间让网页处理任务，然后进行下一个输入
         logger.info(f"第 {i+1} 个任务已加入队列，等待 5 秒进行下一个任务。")
-        time.sleep(5) # 任务处理等待，避免操作过快
+        await asyncio.sleep(5) # 更改: 使用 asyncio.sleep
 
     logger.info("所有拆分文件内容已处理完毕。")
 
     # --- 添加总等待时间 ---
     print("等待 10 秒后关闭浏览器...")
-    time.sleep(10) # 暂停 10 秒
+    await asyncio.sleep(10) # 更改: 使用 asyncio.sleep
 
-    context.close()
-    browser.close()
+    await context.close() # 更改: 添加 await
+    await browser.close() # 更改: 添加 await
     logger.info("Playwright 自动化任务完成。")
 
 # --- 主程序入口点 ---
@@ -274,10 +273,10 @@ async def main(): # 封装为异步主函数
     # 如果文件拆分成功，则运行 Playwright 自动化
     if split_file_paths:
         logger.info(f"文件拆分成功，共生成 {len(split_file_paths)} 个文件。")
-        with sync_playwright() as playwright:
-            run_playwright_automation(playwright, split_file_paths)
+        async with async_playwright() as playwright: # 更改: 变为异步上下文管理器
+            await run_playwright_automation(playwright, split_file_paths) # 更改: 添加 await
     else:
-        logger.info("由于没有文件可供处理，跳过 Playwright 自动化。") # 更改为信息级别，更友好
+        logger.info("由于没有文件可供处理，跳过 Playwright 自动化。")
 
     # 任务完成后自动打开日志文件
     await open_completed_logs(main_log_path, error_log_path, logger, is_auto_open=True)
