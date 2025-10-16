@@ -63,8 +63,28 @@ def open_output_files_automatically(
             
             if sys.platform == "win32":
                 # Windows 系统：使用 explorer 命令，直接调用文件关联程序，这是在终端中最稳定的方式。
-                # 使用列表参数可以确保路径中的中文和空格被正确处理，无需手动转义。
-                subprocess.run(['explorer', normalized_path], check=False)
+                try:
+                    # 使用 subprocess.run 捕获输出，并检查返回码
+                    result = subprocess.run(
+                        ['explorer', normalized_path], 
+                        check=False,
+                        capture_output=True, # 捕获 stdout 和 stderr
+                        text=True # 以文本模式处理输出
+                    )
+                    
+                    if result.returncode != 0:
+                        # 详细记录失败信息
+                        logger_obj.error(f"自动打开文件失败 (explorer 返回码: {result.returncode})。请手动打开文件。")
+                        logger_obj.error(f"explorer-Stdout: {result.stdout.strip()}")
+                        logger_obj.error(f"explorer-Stderr: {result.stderr.strip()}")
+                    else:
+                        logger_obj.info(f"已尝试使用 explorer 成功启动文件打开进程: {normalized_path}")
+
+                except FileNotFoundError:
+                    logger_obj.error(f"错误: explorer 命令未找到。请检查系统 PATH。", exc_info=True)
+                except Exception as e:
+                    logger_obj.error(f"执行 explorer 时发生未知错误: {e}", exc_info=True)
+
             elif sys.platform == "darwin": # macOS
                 # macOS 系统
                 # check=False 避免非零返回码引发异常
@@ -74,6 +94,7 @@ def open_output_files_automatically(
                 subprocess.run(['xdg-open', normalized_path], check=False) 
             
         except FileNotFoundError:
+            # 捕获其他平台或特定错误
             logger_obj.error(f"错误: 无法找到打开文件 '{normalized_path}' 的应用程序。请手动打开。", exc_info=True)
         except Exception as e:
             logger_obj.error(f"自动打开文件 '{normalized_path}' 时发生意外错误: {e}", exc_info=True)
@@ -108,14 +129,15 @@ def prepare_files(prefix_file: str, input_file: str) -> bool:
                 logger.error(f"创建文件 '{filename}' 失败: {e}")
                 return False
 
+    # 无论文件是否缺失，都应该尝试打开文件供用户检查和编辑
+    logger.info("-" * 50)
+    logger.info(f"重要：文件已准备就绪。尝试自动打开 '{prefix_file}' 和 '{input_file}' 进行检查。")
+    logger.info("-" * 50)
+    
+    # 自动打开文件供用户检查，使用最健壮的 explorer/open 模式
+    open_output_files_automatically([prefix_file, input_file], logger)
+
     if files_missing:
-        logger.info("-" * 50)
-        logger.info(f"重要：文件已创建或更新。请立即检查并修改 '{prefix_file}' 和 '{input_file}' 的内容。")
-        logger.info("-" * 50)
-        
-        # 自动打开文件供用户检查，使用新的更健壮的函数
-        open_output_files_automatically([prefix_file, input_file], logger)
-        
         return True # 成功准备文件
         
     return True # 文件都已存在
