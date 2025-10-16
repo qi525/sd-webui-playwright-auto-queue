@@ -62,23 +62,16 @@ def open_output_files_automatically(
             logger_obj.info(f"自动打开: {normalized_path}")
             
             if sys.platform == "win32":
-                # Windows 系统：使用 explorer 命令，直接调用文件关联程序，这是在终端中最稳定的方式。
+                # Windows 系统：使用 Popen + explorer 启动，确保进程在后台运行且不带控制台窗口。
                 try:
-                    # 使用 subprocess.run 捕获输出，并检查返回码
-                    result = subprocess.run(
+                    # CREATE_NO_WINDOW (0x08000000) 标志用于隐藏新进程的控制台窗口
+                    # 使用 Popen 启动，不阻塞主程序，不捕获输出，实现非阻塞后台打开
+                    subprocess.Popen(
                         ['explorer', normalized_path], 
-                        check=False,
-                        capture_output=True, # 捕获 stdout 和 stderr
-                        text=True # 以文本模式处理输出
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                        start_new_session=True # 确保它是一个独立进程
                     )
-                    
-                    if result.returncode != 0:
-                        # 详细记录失败信息
-                        logger_obj.error(f"自动打开文件失败 (explorer 返回码: {result.returncode})。请手动打开文件。")
-                        logger_obj.error(f"explorer-Stdout: {result.stdout.strip()}")
-                        logger_obj.error(f"explorer-Stderr: {result.stderr.strip()}")
-                    else:
-                        logger_obj.info(f"已尝试使用 explorer 成功启动文件打开进程: {normalized_path}")
+                    logger_obj.info(f"已尝试使用 Popen/explorer 启动文件打开进程 (后台非阻塞): {normalized_path}")
 
                 except FileNotFoundError:
                     logger_obj.error(f"错误: explorer 命令未找到。请检查系统 PATH。", exc_info=True)
@@ -150,8 +143,8 @@ def get_prefix(prefix_file_path: str) -> str | None:
     """
     try:
         with open(prefix_file_path, 'r', encoding='utf-8') as f:
-            # 读取第一行并移除首尾空白字符（包括换行符）
-            prefix = f.readline().strip()
+            # 读取第一行并移除行尾的换行符（\n, \r），但保留末尾的空格
+            prefix = f.readline().rstrip('\n')
             logger.info(f"成功读取前缀文件: '{prefix_file_path}'")
             logger.info(f"获取到的前缀为: '{prefix}'")
             return prefix
@@ -201,7 +194,7 @@ def main():
     # 文件路径定义
     PREFIX_FILE = "前缀.txt"
     INPUT_FILE = "处理文档.txt"
-    OUTPUT_FILE = "合并结果.txt"
+    OUTPUT_FILE = "总行数.txt" # 更改: 合并文件的名称改为 '总行数.txt'
 
     # 1. 文件检查与准备 (自动创建并尝试打开文件供检查)
     if not prepare_files(PREFIX_FILE, INPUT_FILE):
@@ -245,6 +238,8 @@ def main():
         logger.warning("有部分行处理失败，请检查日志文件。")
     else:
         logger.success(f"所有行处理成功！结果已保存到文件: '{OUTPUT_FILE}'")
+        logger.info(f"开始自动打开合并成功文件: '{OUTPUT_FILE}'")
+        open_output_files_automatically([OUTPUT_FILE], logger) # 更改: 合并成功后自动打开文件
         
     # 6. 计时结束
     end_time = time.time()
