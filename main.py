@@ -159,13 +159,14 @@ def split_txt_file_by_lines(file_path: Path) -> list[Path]:
         return generated_file_paths
 
 # --- Playwright 自动化功能 ---
-async def run_playwright_automation(playwright: Playwright, input_file_paths: list[Path]) -> None: # 更改: 变为异步函数
+async def run_playwright_automation(playwright: Playwright, input_file_paths: list[Path], image_path: Path) -> None: # 更改: 接受图片路径
     """
     运行 Playwright 自动化脚本，将拆分后的文件内容依次填充到网页输入框。
 
     Args:
         playwright (Playwright): Playwright 实例。
         input_file_paths (list[Path]): 包含要填充到网页的文本文件路径列表。
+        image_path (Path): 导入的图片文件的绝对路径。
     """
     logger.info("开始运行 Playwright 自动化任务。")
     browser = await playwright.chromium.launch( # 更改: 添加 await
@@ -184,7 +185,7 @@ async def run_playwright_automation(playwright: Playwright, input_file_paths: li
 
     file_input_locator = page.locator("#pnginfo_image input[type='file']")
     await file_input_locator.wait_for(state="attached", timeout=10000) # 更改: 添加 await
-    await file_input_locator.set_input_files("00558-913820330.png") # 更改: 添加 await
+    await file_input_locator.set_input_files(str(image_path)) # 更改: 使用传入的绝对路径
     await asyncio.sleep(2) # 更改: 使用 asyncio.sleep
 
     await page.get_by_role("button", name=">> 文生图").wait_for(state="visible", timeout=10000) # 更改: 添加 await
@@ -264,6 +265,11 @@ async def main(): # 封装为异步主函数
     # 确保输入文件在脚本的同一目录中
     script_dir = Path(__file__).resolve().parent
     input_file_path = script_dir / "总行数.txt" # 使用 Path 对象表示输入文件
+    
+    # 【新增】图片文件路径自适应配置
+    IMAGE_FILENAME = "00558-913820330.png"
+    IMAGE_PATH = script_dir / IMAGE_FILENAME
+    logger.info(f"图片文件预设路径: {IMAGE_PATH}")
 
     # 运行文件拆分任务
     logger.info("准备进行文件拆分。")
@@ -274,7 +280,7 @@ async def main(): # 封装为异步主函数
     if split_file_paths:
         logger.info(f"文件拆分成功，共生成 {len(split_file_paths)} 个文件。")
         async with async_playwright() as playwright: # 更改: 变为异步上下文管理器
-            await run_playwright_automation(playwright, split_file_paths) # 更改: 添加 await
+            await run_playwright_automation(playwright, split_file_paths, IMAGE_PATH) # 更改: 传入图片绝对路径
     else:
         logger.info("由于没有文件可供处理，跳过 Playwright 自动化。")
 
