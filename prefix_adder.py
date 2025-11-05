@@ -100,6 +100,8 @@ def prepare_files(prefix_file: str, input_file: str) -> bool:
     检查并创建所需文件，如果文件不存在则写入示例内容。
     自动打开文件供用户检查。
     返回 True 表示文件已准备好，False 表示发生错误。
+    
+    注意：这里的 prefix_file 和 input_file 现在是 main 函数中计算出的绝对路径。
     """
     files_to_create = {
         prefix_file: "[LOG] ",
@@ -111,20 +113,21 @@ def prepare_files(prefix_file: str, input_file: str) -> bool:
     for filename, default_content in files_to_create.items():
         if not os.path.exists(filename):
             try:
-                # 使用 os.path.abspath 获取绝对路径，方便用户在控制台查看
-                abs_path = os.path.abspath(filename)
+                # 使用传入的 filename (已经是绝对路径)
+                abs_path = filename 
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(default_content)
-                logger.warning(f"文件 '{filename}' 不存在，已自动创建并填充示例内容。路径：{abs_path}")
+                # 注意：这里日志中仍然显示 basename，但实际操作的是绝对路径
+                logger.warning(f"文件 '{os.path.basename(filename)}' 不存在，已自动创建并填充示例内容。路径：{abs_path}")
                 files_missing = True
             except Exception as e:
                 # 文件创建失败是严重错误
-                logger.error(f"创建文件 '{filename}' 失败: {e}")
+                logger.error(f"创建文件 '{os.path.basename(filename)}' 失败: {e}")
                 return False
 
     # 无论文件是否缺失，都应该尝试打开文件供用户检查和编辑
     logger.info("-" * 50)
-    logger.info(f"重要：文件已准备就绪。尝试自动打开 '{prefix_file}' 和 '{input_file}' 进行检查。")
+    logger.info(f"重要：文件已准备就绪。尝试自动打开 '{os.path.basename(prefix_file)}' 和 '{os.path.basename(input_file)}' 进行检查。")
     logger.info("-" * 50)
     
     # 自动打开文件供用户检查，使用最健壮的 explorer/open 模式
@@ -145,12 +148,12 @@ def get_prefix(prefix_file_path: str) -> str | None:
         with open(prefix_file_path, 'r', encoding='utf-8') as f:
             # 读取第一行并移除行尾的换行符（\n, \r），但保留末尾的空格
             prefix = f.readline().rstrip('\n')
-            logger.info(f"成功读取前缀文件: '{prefix_file_path}'")
+            logger.info(f"成功读取前缀文件: '{os.path.basename(prefix_file_path)}'")
             logger.info(f"获取到的前缀为: '{prefix}'")
             return prefix
     except FileNotFoundError:
         # 理论上 prepare_files 已经确保文件存在，这里作为安全备份
-        logger.error(f"错误：前缀文件未找到: {prefix_file_path}")
+        logger.error(f"错误：前缀文件未找到: {os.path.basename(prefix_file_path)}")
         return None
     except Exception as e:
         logger.error(f"读取前缀文件时发生未知错误: {e}")
@@ -179,7 +182,7 @@ def process_and_add_prefix(prefix: str, input_file_path: str, output_file_path: 
                     logger.warning(f"处理第 {total_lines} 行时失败: {line.strip()} | 错误: {e}")
 
     except FileNotFoundError:
-        logger.error(f"错误：输入文件未找到: {input_file_path}")
+        logger.error(f"错误：输入文件未找到: {os.path.basename(input_file_path)}")
     except Exception as e:
         logger.error(f"处理文件时发生未知错误: {e}")
     
@@ -192,9 +195,24 @@ def main():
     logger.info("--- 任务启动 ---")
     
     # 文件路径定义
-    PREFIX_FILE = "前缀.txt"
-    INPUT_FILE = "处理文档.txt"
-    OUTPUT_FILE = "总行数.txt" # 更改: 合并文件的名称改为 '总行数.txt'
+    PREFIX_FILE_NAME = "前缀.txt"
+    INPUT_FILE_NAME = "处理文档.txt"
+    OUTPUT_FILE_NAME = "总行数.txt" # 更改: 合并文件的名称改为 '总行数.txt'
+
+    # 计算脚本文件所在目录的绝对路径，用于定位文件
+    # **核心改动点**：确保文件在脚本所在的目录中操作
+    try:
+        # __file__ 只有在作为脚本运行时才可用
+        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        # 如果在交互式环境（如 IPython）中运行，则退回到当前工作目录
+        SCRIPT_DIR = os.getcwd()
+        logger.warning(f"无法确定脚本路径（可能是交互式环境），文件将使用当前工作目录: {SCRIPT_DIR}")
+    
+    # 将文件名转换为基于脚本目录的绝对路径
+    PREFIX_FILE = os.path.join(SCRIPT_DIR, PREFIX_FILE_NAME)
+    INPUT_FILE = os.path.join(SCRIPT_DIR, INPUT_FILE_NAME)
+    OUTPUT_FILE = os.path.join(SCRIPT_DIR, OUTPUT_FILE_NAME)
 
     # 1. 文件检查与准备 (自动创建并尝试打开文件供检查)
     if not prepare_files(PREFIX_FILE, INPUT_FILE):
@@ -204,7 +222,9 @@ def main():
     # 2. 暂停等待用户确认，计时从此刻开始
     try:
         print("\n" + "=" * 50)
-        input("文件已尝试自动打开。检查完毕，请按回车键（Enter）继续处理...")
+        # 提示用户文件所在目录，增强用户体验
+        print(f"文件已尝试自动打开，请检查并编辑位于目录 '{SCRIPT_DIR}' 下的文件。")
+        input("检查完毕，请按回车键（Enter）继续处理...")
         print("=" * 50 + "\n")
     except EOFError:
         logger.warning("在非交互式环境中运行，跳过回车等待。")
@@ -225,7 +245,7 @@ def main():
         return
 
     # 4. 处理文档并添加前缀
-    logger.info(f"开始处理文件 '{INPUT_FILE}'...")
+    logger.info(f"开始处理文件 '{INPUT_FILE_NAME}'...")
     total, success, failed = process_and_add_prefix(prefix_str, INPUT_FILE, OUTPUT_FILE)
 
     # 5. 任务结果汇总
@@ -237,8 +257,8 @@ def main():
     if failed > 0:
         logger.warning("有部分行处理失败，请检查日志文件。")
     else:
-        logger.success(f"所有行处理成功！结果已保存到文件: '{OUTPUT_FILE}'")
-        logger.info(f"开始自动打开合并成功文件: '{OUTPUT_FILE}'")
+        logger.success(f"所有行处理成功！结果已保存到文件: '{OUTPUT_FILE_NAME}'")
+        logger.info(f"开始自动打开合并成功文件: '{OUTPUT_FILE_NAME}'")
         open_output_files_automatically([OUTPUT_FILE], logger) # 更改: 合并成功后自动打开文件
         
     # 6. 计时结束
